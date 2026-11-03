@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -20,6 +21,7 @@ import {
   generateWorkoutPlan,
   getActiveWorkoutSession,
   getTodayWorkout,
+  listExerciseCatalog,
   logWorkoutSet,
   pauseWorkoutSession,
   replaceWorkoutExercise,
@@ -31,10 +33,13 @@ import { AppShell } from '../../components/app/AppShell';
 import { ImageUploadThumb } from '../../components/fitness/ImageUploadThumb';
 import type { FitnessPalette } from '../../constants/fitnessPalette';
 import { useFitnessPalette, useFitnessStyles } from '../../hooks/useFitnessPalette';
+import { resolveFitnessMediaUrl } from '../../lib/fitness/mediaUrl';
 import {
+  applyCatalogMedia,
   computeElapsedSeconds,
   formatClock,
   mergeSessionExercises,
+  type ExerciseCatalogMedia,
 } from '../../lib/fitness/workoutResponse';
 import type {
   WorkoutDay,
@@ -50,10 +55,30 @@ function mapStatus(raw?: string | null): WorkoutSessionStatus {
   if (status === 'completed' || status === 'finished' || status === 'ended') {
     return 'finished';
   }
-  if (status === 'active' || status === 'in_progress' || status === 'started') {
+  if (
+    status === 'active' ||
+    status === 'in_progress' ||
+    status === 'started' ||
+    status === 'partial'
+  ) {
     return 'active';
   }
   return 'idle';
+}
+
+function isWorkoutDayId(value?: string | null) {
+  return Boolean(
+    value &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        value,
+      ),
+  );
+}
+
+function hasOpenExercise(exercises: WorkoutExercise[]) {
+  return exercises.some(
+    (item) => !item.completed && !item.skipped && !item.replaced,
+  );
 }
 
 function parseTargetReps(value: string | number | null | undefined) {
@@ -100,6 +125,7 @@ export function WorkoutScreen() {
   const p = useFitnessPalette();
   const styles = useFitnessStyles(buildStyles);
   const [today, setToday] = useState<WorkoutDay | null>(null);
+  const [catalog, setCatalog] = useState<ExerciseCatalogMedia[]>([]);
   const [sessionExercises, setSessionExercises] = useState<WorkoutExercise[]>(
     [],
   );
@@ -137,8 +163,12 @@ export function WorkoutScreen() {
   }, []);
 
   const exercises = useMemo(
-    () => mergeSessionExercises(today?.exercises ?? [], sessionExercises),
-    [sessionExercises, today?.exercises],
+    () =>
+      applyCatalogMedia(
+        mergeSessionExercises(today?.exercises ?? [], sessionExercises),
+        catalog,
+      ),
+    [catalog, sessionExercises, today?.exercises],
   );
 
   const activeExercise =
@@ -147,10 +177,11 @@ export function WorkoutScreen() {
       (item) => !item.completed && !item.skipped && !item.replaced,
     ) ??
     null;
+  const sessionLive = sessionStatus === 'active' || sessionStatus === 'paused';
 
   const upcoming = exercises.filter(
     (item) =>
-      item.id !== activeExercise?.id &&
+      !(sessionLive && item.id === activeExercise?.id) &&
       !item.completed &&
       !item.skipped &&
       !item.replaced,
@@ -190,7 +221,6 @@ export function WorkoutScreen() {
       ? Math.round((finished.length / exercises.length) * 100)
       : 0);
   const restTarget = activeExercise?.restSeconds ?? 90;
-  const sessionLive = sessionStatus === 'active' || sessionStatus === 'paused';
   const focusLabel =
     today?.focus || today?.label || 'Training day';
 
@@ -202,14 +232,19 @@ export function WorkoutScreen() {
       setRefreshing(true);
     }
     try {
-      const [workout, activeSession] = await Promise.all([
+      const [workout, activeSession, exerciseCatalog] = await Promise.all([
         getTodayWorkout(),
         getActiveWorkoutSession().catch(() => null),
+        listExerciseCatalog(),
       ]);
       setToday(workout);
+      setCatalog(exerciseCatalog);
       if (activeSession?.sessionId) {
         const mapped = mapStatus(activeSession.status);
-        if (mapped === 'active' || mapped === 'paused') {
+        if (
+          (mapped === 'active' || mapped === 'paused') &&
+          hasOpenExercise(activeSession.exercises ?? [])
+        ) {
           hydrateSession(activeSession);
           const firstOpen =
             (activeSession.exercises ?? workout?.exercises ?? []).find(
@@ -258,14 +293,19 @@ export function WorkoutScreen() {
   }, [restSecondsLeft, sessionStatus]);
 
   const refreshLive = useCallback(async () => {
-    const [workout, activeSession] = await Promise.all([
+    const [workout, activeSession, exerciseCatalog] = await Promise.all([
       getTodayWorkout(),
       getActiveWorkoutSession().catch(() => null),
+      listExerciseCatalog(),
     ]);
     setToday(workout);
+    setCatalog(exerciseCatalog);
     if (activeSession?.sessionId) {
       const mapped = mapStatus(activeSession.status);
-      if (mapped === 'active' || mapped === 'paused') {
+      if (
+        (mapped === 'active' || mapped === 'paused') &&
+        hasOpenExercise(activeSession.exercises ?? [])
+      ) {
         hydrateSession(activeSession);
       }
     }
@@ -298,7 +338,12 @@ export function WorkoutScreen() {
     if (!today) return;
     setBusy(true);
     try {
-      const session = await startWorkoutSession(today.id);
+      const dayId = isWorkoutDayId(today.id) ? today.id : undefined;
+      let session = await startWorkoutSession(dayId);
+      if (!hasOpenExercise(session.exercises ?? [])) {
+        await endWorkoutSession(session.sessionId, { force: true });
+        session = await startWorkoutSession(dayId);
+      }
       hydrateSession(session);
       setRestSecondsLeft(0);
       const merged = mergeSessionExercises(
@@ -783,7 +828,6 @@ export function WorkoutScreen() {
                   exercise={exercise}
                   index={index}
                   showSwap={swapExerciseId === exercise.id}
-                  onSelect={() => setActiveExerciseId(exercise.id)}
                   onReplace={(name) => void onReplaceExercise(exercise, name)}
                   onToggleSwap={() =>
                     setSwapExerciseId((current) =>
@@ -814,7 +858,6 @@ export function WorkoutScreen() {
                   exercise={exercise}
                   index={index}
                   showSwap={false}
-                  onSelect={() => undefined}
                   onReplace={() => undefined}
                   onToggleSwap={() => undefined}
                   onUpload={(prepared) =>
@@ -827,6 +870,31 @@ export function WorkoutScreen() {
         ) : null}
       </ScrollView>
     </AppShell>
+  );
+}
+
+function MovementReference({ uri }: { uri?: string | null }) {
+  const styles = useFitnessStyles(buildStyles);
+  const resolved = resolveFitnessMediaUrl(uri);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [resolved]);
+
+  if (!resolved || failed) return null;
+
+  return (
+    <View style={styles.reference}>
+      <Image
+        accessibilityIgnoresInvertColors
+        accessibilityLabel="Movement reference"
+        resizeMode="cover"
+        source={{ uri: resolved }}
+        style={styles.referenceImage}
+        onError={() => setFailed(true)}
+      />
+    </View>
   );
 }
 
@@ -1085,6 +1153,7 @@ function ActiveExerciseCard({
 
   return (
     <View style={styles.card}>
+      <MovementReference uri={exercise.imageUrl} />
       <View style={styles.exerciseRow}>
         <ImageUploadThumb
           fallbackIcon="barbell-outline"
@@ -1232,7 +1301,6 @@ function UpcomingExerciseCard({
   disabled,
   busy,
   showSwap,
-  onSelect,
   onReplace,
   onToggleSwap,
   onUpload,
@@ -1242,7 +1310,6 @@ function UpcomingExerciseCard({
   disabled: boolean;
   busy: boolean;
   showSwap: boolean;
-  onSelect: () => void;
   onReplace: (name: string) => void;
   onToggleSwap: () => void;
   onUpload: (prepared: {
@@ -1258,7 +1325,8 @@ function UpcomingExerciseCard({
 
   return (
     <View style={[styles.card, done && styles.cardDone]}>
-      <Pressable disabled={done} onPress={onSelect} style={styles.exerciseRow}>
+      <MovementReference uri={exercise.imageUrl} />
+      <View style={styles.exerciseRow}>
         <ImageUploadThumb
           fallbackIcon="barbell-outline"
           size={48}
@@ -1302,7 +1370,7 @@ function UpcomingExerciseCard({
                   : 'Pending'}
           </Text>
         </View>
-      </Pressable>
+      </View>
 
       {!done ? (
         <>
@@ -1425,6 +1493,15 @@ function buildStyles(p: FitnessPalette) {
       borderWidth: 1,
       gap: 12,
       padding: 16,
+    },
+    reference: {
+      backgroundColor: '#F4E7D4',
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+    referenceImage: {
+      aspectRatio: 1,
+      width: '100%',
     },
     cardDone: { opacity: 0.85 },
     sessionCard: {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -25,6 +25,10 @@ export function MediaThumb({
   const styles = useFitnessStyles(buildStyles);
   const resolved = resolveFitnessMediaUrl(uri);
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [resolved]);
 
   if (!resolved || failed) {
     return (

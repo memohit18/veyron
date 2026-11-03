@@ -434,6 +434,94 @@ export function formatClock(totalSeconds: number) {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+export type ExerciseCatalogMedia = {
+  id: string;
+  name: string;
+  imageUrl?: string | null;
+};
+
+export function unwrapExerciseCatalog(response: unknown): ExerciseCatalogMedia[] {
+  const data = unwrapFitnessData<unknown>(response);
+  const list = Array.isArray(data)
+    ? data
+    : data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)
+      ? (data as { items: unknown[] }).items
+      : [];
+
+  return list.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    const id = readString(record.id);
+    const name = readString(record.name);
+    if (!id || !name) return [];
+    return [
+      {
+        id,
+        name,
+        imageUrl: pickMediaUrl(record),
+      },
+    ];
+  });
+}
+
+const WORKOUT_GIF_BASE = 'https://cdn.algoarena.co.in/catalog/workout-gifs/v2';
+
+/** Clips whose machine must stay pixel-locked. These win over a stale catalog URL. */
+const LOCKED_MOVEMENT_GIFS: Record<string, string> = {
+  'seated cable rows':
+    'https://cdn.algoarena.co.in/catalog/workout-gifs/v8/seated-cable-rows.gif',
+};
+
+function lockedMovementGif(name?: string | null) {
+  const key = (name ?? '').trim().toLowerCase();
+  return key ? LOCKED_MOVEMENT_GIFS[key] ?? null : null;
+}
+
+function movementGifUrl(name?: string | null) {
+  const locked = lockedMovementGif(name);
+  if (locked) return locked;
+  const slug = (name ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return slug ? `${WORKOUT_GIF_BASE}/${slug}.gif` : null;
+}
+
+/** Fill a session exercise with its catalog movement GIF when the row has none. */
+export function applyCatalogMedia(
+  exercises: WorkoutExercise[],
+  catalog: ExerciseCatalogMedia[],
+): WorkoutExercise[] {
+  if (!exercises.length) return exercises;
+
+  const byId = new Map<string, string>();
+  const byName = new Map<string, string>();
+  for (const item of catalog) {
+    if (!item.imageUrl) continue;
+    byId.set(item.id, item.imageUrl);
+    byName.set(item.name.trim().toLowerCase(), item.imageUrl);
+  }
+
+  return exercises.map((exercise) => {
+    const replacement = exercise.replacementName?.trim().toLowerCase();
+    if (exercise.replaced && replacement) {
+      const swapped =
+        lockedMovementGif(exercise.replacementName) ??
+        byName.get(replacement) ??
+        movementGifUrl(exercise.replacementName);
+      if (swapped) return { ...exercise, imageUrl: swapped };
+    }
+    const locked = lockedMovementGif(exercise.name);
+    if (locked) return { ...exercise, imageUrl: locked };
+    if (exercise.imageUrl) return exercise;
+    const fromId = exercise.exerciseId ? byId.get(exercise.exerciseId) : undefined;
+    const fromName = byName.get(exercise.name.trim().toLowerCase());
+    const imageUrl = fromId ?? fromName ?? movementGifUrl(exercise.name);
+    return imageUrl ? { ...exercise, imageUrl } : exercise;
+  });
+}
+
 export function mergeSessionExercises(
   planned: WorkoutExercise[],
   sessionExercises?: WorkoutExercise[],

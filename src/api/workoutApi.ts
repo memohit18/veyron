@@ -7,8 +7,10 @@ import {
 } from '../lib/fitness/fitnessResponse';
 import {
   unwrapActiveWorkoutToday,
+  unwrapExerciseCatalog,
   unwrapTodayWorkout,
   unwrapWorkoutSession,
+  type ExerciseCatalogMedia,
 } from '../lib/fitness/workoutResponse';
 import type { WorkoutDay, WorkoutSession } from '../types/fitness';
 import { getApiErrorMessage } from '../utils/api';
@@ -44,6 +46,16 @@ export async function getTodayWorkout(): Promise<WorkoutDay | null> {
   } catch (error) {
     if (isAbsent(error)) return null;
     throw new Error(getApiErrorMessage(error, 'Unable to load workout.'));
+  }
+}
+
+export async function listExerciseCatalog(): Promise<ExerciseCatalogMedia[]> {
+  try {
+    const { data } = await baseApi.get<unknown>('/workouts/exercises');
+    if (isFitnessErrorEnvelope(data)) return [];
+    return unwrapExerciseCatalog(data);
+  } catch {
+    return [];
   }
 }
 
@@ -207,37 +219,17 @@ export async function replaceWorkoutExercise(input: {
   }
 }
 
-/**
- * Best-effort attach. Desktop food images use PATCH /foods/:id; exercise
- * image editors are not exposed there yet, so we try common exercise routes.
- */
+/** Persist demo image/GIF URL on ExerciseMaster via PATCH /workouts/exercises/:id */
 export async function updateExerciseImage(
   exerciseId: string,
   imageUrl: string,
 ): Promise<boolean> {
-  const paths = [
-    `/exercises/${exerciseId}`,
-    `/workouts/exercises/${exerciseId}`,
-  ];
-
-  for (const path of paths) {
-    try {
-      await baseApi.patch(path, { imageUrl });
-      return true;
-    } catch (error) {
-      if (
-        axios.isAxiosError(error) &&
-        [404, 405].includes(error.response?.status ?? 0)
-      ) {
-        continue;
-      }
-      if (axios.isAxiosError(error) && (error.response?.status ?? 0) >= 500) {
-        throw new Error(
-          getApiErrorMessage(error, 'Unable to save exercise image.'),
-        );
-      }
-    }
+  try {
+    await baseApi.patch(`/workouts/exercises/${exerciseId}`, { imageUrl });
+    return true;
+  } catch (error) {
+    throw new Error(
+      getApiErrorMessage(error, 'Unable to save exercise image.'),
+    );
   }
-
-  return false;
 }
