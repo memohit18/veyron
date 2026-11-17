@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { confirmFitnessAction } from '../../lib/fitness/confirmAction';
 import {
   createCustomFood,
   estimateFoodNutrition,
@@ -137,6 +138,11 @@ export function AddMealSheet({
       setError('Type the food name first, then estimate nutrition.');
       return;
     }
+    const ok = await confirmFitnessAction(
+      'Estimate nutrition?',
+      `Look up nutrition for ${foodName}? Nothing is saved until you add the meal.`,
+    );
+    if (!ok) return;
     setEstimating(true);
     setError(null);
     try {
@@ -233,6 +239,12 @@ export function AddMealSheet({
       setError('Choose a food, or add one that is not listed.');
       return;
     }
+    const foodLabel = customOpen ? customName.trim() : selected?.name ?? 'this food';
+    const ok = await confirmFitnessAction(
+      'Add this meal?',
+      `Log ${quantity} × ${foodLabel}?`,
+    );
+    if (!ok) return;
     setSaving(true);
     setError(null);
     try {

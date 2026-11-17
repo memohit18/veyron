@@ -35,6 +35,7 @@ import { WorkoutProgressCard } from '../../components/fitness/dashboard/WorkoutP
 import { HomeTopBar } from '../../components/fitness/home/HomeTopBar';
 import type { FitnessPalette } from '../../constants/fitnessPalette';
 import { useFitnessPalette, useFitnessStyles } from '../../hooks/useFitnessPalette';
+import { confirmFitnessAction } from '../../lib/fitness/confirmAction';
 import { useImmersiveTopPad } from '../../hooks/useImmersiveTopPad';
 import { useAuth, useAppDispatch } from '../../hooks';
 import { loadSession, saveSession } from '../../services/authSession';
@@ -163,6 +164,11 @@ export function AnalyticsScreen() {
   }, [dashboard?.water, hydration]);
 
   const onAddWater = async (amountMl: number) => {
+    const ok = await confirmFitnessAction(
+      'Log water?',
+      `Add ${amountMl} ml to today’s water?`,
+    );
+    if (!ok) return;
     setLoggingWater(true);
     try {
       const next = await logHydration(amountMl);

@@ -3,6 +3,7 @@ import { pickMediaUrl } from './mediaUrl';
 import type {
   WorkoutDay,
   WorkoutExercise,
+  WorkoutPlan,
   WorkoutSession,
   WorkoutSessionAnalytics,
   WorkoutSetLog,
@@ -261,6 +262,7 @@ export function unwrapTodayWorkout(response: unknown): WorkoutDay | null {
 
   return {
     id: id || 'today',
+    dayNumber: readNullableNumber(record.dayNumber ?? record.day_number),
     label:
       readString(record.label ?? record.title ?? record.name) || null,
     focus: readString(record.focus ?? record.focusArea ?? record.title) || null,
@@ -268,6 +270,25 @@ export function unwrapTodayWorkout(response: unknown): WorkoutDay | null {
       record.estimatedMinutes ?? record.durationMinutes,
     ),
     exercises,
+  };
+}
+
+export function unwrapActiveWorkoutPlan(response: unknown): WorkoutPlan | null {
+  const data = unwrapFitnessData<Record<string, unknown>>(response);
+  if (!data || typeof data !== 'object') return null;
+
+  const daysRaw = Array.isArray(data.days) ? data.days : [];
+  const days = daysRaw.flatMap((day) => {
+    const parsed = unwrapTodayWorkout({ success: true, message: '', data: day });
+    return parsed ? [parsed] : [];
+  });
+  const id = readString(data.id);
+  if (!id && days.length === 0) return null;
+
+  return {
+    id: id || 'plan',
+    status: readString(data.status) || null,
+    days,
   };
 }
 
@@ -470,11 +491,34 @@ const WORKOUT_GIF_BASE = 'https://cdn.algoarena.co.in/catalog/workout-gifs/v2';
 const LOCKED_MOVEMENT_GIFS: Record<string, string> = {
   'seated cable rows':
     'https://cdn.algoarena.co.in/catalog/workout-gifs/v8/seated-cable-rows.gif',
+  'dumbbell flyes':
+    'https://cdn.algoarena.co.in/catalog/workout-gifs/v9/dumbbell-flyes.gif',
+  'incline dumbbell press':
+    'https://cdn.algoarena.co.in/catalog/workout-gifs/v9/incline-dumbbell-press.gif',
+  'overhead triceps extension':
+    'https://cdn.algoarena.co.in/catalog/workout-gifs/v9/overhead-triceps-extension.gif',
+  'triceps pushdowns':
+    'https://cdn.algoarena.co.in/catalog/workout-gifs/v9/triceps-pushdowns.gif',
 };
 
 function lockedMovementGif(name?: string | null) {
   const key = (name ?? '').trim().toLowerCase();
   return key ? LOCKED_MOVEMENT_GIFS[key] ?? null : null;
+}
+
+/** A file you uploaded. These beat the generated catalog loops. */
+function isCustomDemoUrl(url?: string | null) {
+  return Boolean(url && !url.includes('/catalog/workout-gifs/'));
+}
+
+function chooseDemoUrl(
+  name: string | null | undefined,
+  rowUrl?: string | null,
+  catalogUrl?: string | null,
+) {
+  if (isCustomDemoUrl(rowUrl)) return rowUrl ?? null;
+  if (isCustomDemoUrl(catalogUrl)) return catalogUrl ?? null;
+  return lockedMovementGif(name) ?? rowUrl ?? catalogUrl ?? movementGifUrl(name);
 }
 
 function movementGifUrl(name?: string | null) {
@@ -506,18 +550,16 @@ export function applyCatalogMedia(
   return exercises.map((exercise) => {
     const replacement = exercise.replacementName?.trim().toLowerCase();
     if (exercise.replaced && replacement) {
-      const swapped =
-        lockedMovementGif(exercise.replacementName) ??
-        byName.get(replacement) ??
-        movementGifUrl(exercise.replacementName);
+      const swapped = chooseDemoUrl(
+        exercise.replacementName,
+        null,
+        byName.get(replacement),
+      );
       if (swapped) return { ...exercise, imageUrl: swapped };
     }
-    const locked = lockedMovementGif(exercise.name);
-    if (locked) return { ...exercise, imageUrl: locked };
-    if (exercise.imageUrl) return exercise;
     const fromId = exercise.exerciseId ? byId.get(exercise.exerciseId) : undefined;
     const fromName = byName.get(exercise.name.trim().toLowerCase());
-    const imageUrl = fromId ?? fromName ?? movementGifUrl(exercise.name);
+    const imageUrl = chooseDemoUrl(exercise.name, exercise.imageUrl, fromId ?? fromName);
     return imageUrl ? { ...exercise, imageUrl } : exercise;
   });
 }

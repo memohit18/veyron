@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -7,12 +7,8 @@ export function Logo() {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.icon, { backgroundColor: colors.primary }]}>
-        <View style={styles.line} />
-        <View style={[styles.line, styles.lineMiddle]} />
-        <View style={styles.line} />
-      </View>
-      <Text style={[styles.brand, { color: colors.text }]}>DIP</Text>
+      <Image source={require('../../../assets/icon.png')} style={styles.icon} />
+      <Text style={[styles.brand, { color: colors.text }]}>Veyron</Text>
     </View>
   );
 }
@@ -26,21 +22,9 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   icon: {
-    alignItems: 'center',
     borderRadius: 8,
-    gap: 3,
     height: 32,
-    justifyContent: 'center',
     width: 32,
-  },
-  line: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 1,
-    height: 2,
-    width: 16,
-  },
-  lineMiddle: {
-    width: 12,
   },
   brand: {
     fontSize: 20,

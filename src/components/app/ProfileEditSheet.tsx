@@ -17,6 +17,7 @@ import Toast from 'react-native-toast-message';
 import { UserAvatar } from './UserAvatar';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { updateProfile } from '../../api/profileApi';
+import { confirmFitnessAction } from '../../lib/fitness/confirmAction';
 import { uploadImage } from '../../api/imagesApi';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAppDispatch } from '../../hooks';
@@ -106,6 +107,12 @@ export function ProfileEditSheet({
       const prepared = await pickAndPrepareImage();
       if (!prepared) return;
 
+      const ok = await confirmFitnessAction(
+        'Upload photo?',
+        'Upload this profile photo? It is saved when you tap Save.',
+      );
+      if (!ok) return;
+
       await new Promise<void>((resolve) => {
         InteractionManager.runAfterInteractions(() => resolve());
       });
@@ -162,6 +169,14 @@ export function ProfileEditSheet({
         return;
       }
     }
+
+    const ok = await confirmFitnessAction(
+      'Save profile?',
+      passwordDirty && !profileDirty
+        ? 'Update your password?'
+        : 'Save these profile changes?',
+    );
+    if (!ok) return;
 
     setFormError(null);
     setFormStatus('Saving…');

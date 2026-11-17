@@ -142,3 +142,11 @@ export async function saveFitnessProfile(
     throw toFitnessApiError(error, 'Unable to save fitness profile.');
   }
 }
+
+export async function deleteFitnessProfile(): Promise<void> {
+  try {
+    await baseApi.delete('/fitness/profile');
+  } catch (error) {
+    throw toFitnessApiError(error, 'Unable to delete fitness profile.');
+  }
+}

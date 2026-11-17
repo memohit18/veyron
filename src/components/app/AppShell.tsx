@@ -6,6 +6,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { layout, typeScale } from '../../constants/designSystem';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useImmersiveTopPad } from '../../hooks/useImmersiveTopPad';
@@ -22,7 +23,7 @@ interface AppShellProps {
 
 export function AppShell({
   children,
-  title = 'DIP',
+  title = 'Veyron',
   contentStyle,
   hideHeader = false,
   backgroundColor,
@@ -54,19 +55,17 @@ const styles = StyleSheet.create({
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
+    height: layout.headerHeight,
     justifyContent: 'space-between',
-    paddingBottom: 4,
-    paddingHorizontal: 16,
-    paddingTop: 0,
+    paddingHorizontal: layout.gutter,
   },
   title: {
+    ...typeScale.section,
     flex: 1,
-    fontSize: 18,
-    fontWeight: '700',
     paddingRight: 12,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: layout.gutter,
   },
 });

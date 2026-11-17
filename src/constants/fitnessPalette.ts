@@ -1,3 +1,5 @@
+import { omniColor } from './designSystem';
+
 export type FitnessPalette = {
   bg: string;
   surface: string;
@@ -20,49 +22,52 @@ export type FitnessPalette = {
   track: string;
 };
 
-/** Dark fitness palette used by the meal design. */
+const dark = omniColor.dark;
+const light = omniColor.light;
+
+/** Dark Veyron palette. `lime` is the cobalt brand accent. */
 export const darkFitnessPalette: FitnessPalette = {
-  bg: '#07140F',
-  surface: '#12201A',
-  surfaceElevated: '#1A2A22',
-  border: '#24362C',
-  text: '#FFFFFF',
-  textSecondary: '#9AA8A0',
-  textMuted: '#6B7A72',
-  lime: '#C8FF00',
-  limeSoft: '#9BE15D',
-  limeDim: 'rgba(200, 255, 0, 0.16)',
-  onLime: '#0A140F',
-  burn: '#FF4D6A',
-  active: '#F5C518',
-  hydrate: '#2EE6D6',
-  sleep: '#A78BFA',
-  hot: '#FF5C8A',
-  wave: '#2EE6D6',
-  dangerDot: '#FF3B30',
-  track: '#1E3328',
+  bg: dark.bg,
+  surface: dark.card,
+  surfaceElevated: dark.muted,
+  border: dark.border,
+  text: dark.text,
+  textSecondary: dark.secondary,
+  textMuted: dark.caption,
+  lime: dark.primary,
+  limeSoft: dark.primaryLight,
+  limeDim: dark.glaze,
+  onLime: dark.onPrimary,
+  burn: dark.danger,
+  active: dark.warning,
+  hydrate: dark.info,
+  sleep: dark.info,
+  hot: dark.danger,
+  wave: dark.info,
+  dangerDot: dark.danger,
+  track: dark.muted,
 };
 
 export const lightFitnessPalette: FitnessPalette = {
-  bg: '#F4F6F3',
-  surface: '#FFFFFF',
-  surfaceElevated: '#F3F5F2',
-  border: '#E4E8E3',
-  text: '#111827',
-  textSecondary: '#5C6B63',
-  textMuted: '#8A978F',
-  lime: '#8FBF00',
-  limeSoft: '#5C8A00',
-  limeDim: 'rgba(143, 191, 0, 0.16)',
-  onLime: '#10210A',
-  burn: '#E11D48',
-  active: '#D97706',
-  hydrate: '#0F9F94',
-  sleep: '#7C6BB5',
-  hot: '#E11D6A',
-  wave: '#0F9F94',
-  dangerDot: '#FF3B30',
-  track: '#E7EEE6',
+  bg: light.bg,
+  surface: light.card,
+  surfaceElevated: light.muted,
+  border: light.border,
+  text: light.text,
+  textSecondary: light.secondary,
+  textMuted: light.caption,
+  lime: light.primary,
+  limeSoft: light.primaryLight,
+  limeDim: light.glaze,
+  onLime: light.onPrimary,
+  burn: light.danger,
+  active: light.warning,
+  hydrate: light.info,
+  sleep: light.info,
+  hot: light.danger,
+  wave: light.info,
+  dangerDot: light.danger,
+  track: light.border,
 };
 
 /** Default export stays the dark palette for modules that have not opted into theme yet. */

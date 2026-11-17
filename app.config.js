@@ -24,7 +24,7 @@ module.exports = {
       bundleIdentifier: 'com.fitnessai.mobile',
       buildNumber: '1',
       infoPlist: {
-        CFBundleDisplayName: 'DIP',
+        CFBundleDisplayName: 'Veyron',
         // Immersive: hide status bar; swipe from top still opens system shade.
         UIStatusBarHidden: true,
         UIViewControllerBasedStatusBarAppearance: false,
@@ -63,7 +63,7 @@ module.exports = {
         'expo-image-picker',
         {
           photosPermission:
-            'Allow DIP to access your photos so you can upload meal and workout images.',
+            'Allow Veyron to access your photos so you can upload meal and workout images.',
           cameraPermission: false,
           microphonePermission: false,
         },

@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 
+import { confirmFitnessAction } from '../../../lib/fitness/confirmAction';
+
 import {
   getFoodPreferences,
   listFoodCategories,
@@ -193,6 +195,12 @@ export function NutritionPanel() {
       });
       return;
     }
+
+    const ok = await confirmFitnessAction(
+      'Save nutrition?',
+      'Save these food and meal preferences?',
+    );
+    if (!ok) return;
 
     setSaving(true);
     try {

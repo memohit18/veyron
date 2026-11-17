@@ -2,16 +2,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-import { getFitnessProfile } from '../../api/fitnessApi';
+import { deleteFitnessProfile, getFitnessProfile } from '../../api/fitnessApi';
 import {
   buildFitnessReviewSectionsFromProfile,
   formatFitnessUpdatedAt,
@@ -35,6 +36,7 @@ export function FitnessProfilePanel() {
   const [profile, setProfile] = useState<FitnessProfile | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -51,6 +53,44 @@ export function FitnessProfilePanel() {
       );
     }
   }, []);
+
+  const confirmDelete = useCallback(() => {
+    Alert.alert(
+      'Delete fitness profile?',
+      'This removes your fitness profile along with meals, progress, and other data from it. Your workout plan and completed sessions stay, so you do not have to do that work again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              setDeleting(true);
+              try {
+                await deleteFitnessProfile();
+                setProfile(null);
+                setStatus('ready');
+                const root = navigation.getParent() ?? navigation;
+                root.dispatch(
+                  CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'FitnessSetup' }],
+                  }),
+                );
+              } catch (error) {
+                Alert.alert(
+                  'Could not delete',
+                  getApiErrorMessage(error, 'Unable to delete fitness profile.'),
+                );
+              } finally {
+                setDeleting(false);
+              }
+            })();
+          },
+        },
+      ],
+    );
+  }, [navigation]);
 
   useEffect(() => {
     void load();
@@ -170,6 +210,28 @@ export function FitnessProfilePanel() {
             </Text>
           </Pressable>
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={deleting}
+          onPress={confirmDelete}
+          style={({ pressed }) => [
+            styles.dangerBtn,
+            {
+              borderColor: colors.error,
+              opacity: pressed || deleting ? 0.75 : 1,
+            },
+          ]}
+        >
+          {deleting ? (
+            <ActivityIndicator color={colors.error} size="small" />
+          ) : (
+            <Ionicons color={colors.error} name="trash-outline" size={16} />
+          )}
+          <Text style={[styles.dangerBtnText, { color: colors.error }]}>
+            {deleting ? 'Deleting…' : 'Delete fitness profile'}
+          </Text>
+        </Pressable>
       </View>
 
       {profile.physiqueGoal ? (
@@ -320,6 +382,21 @@ const styles = StyleSheet.create({
   secondaryBtnText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  dangerBtn: {
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    marginTop: 4,
+    minHeight: 44,
+    paddingHorizontal: 14,
+  },
+  dangerBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
   },
   physiqueCard: {
     overflow: 'hidden',

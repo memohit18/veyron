@@ -14,6 +14,7 @@ export type MainTabParamList = {
 };
 
 export type AppStackParamList = {
+  Home: undefined;
   MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
   FitnessSetup: { mode?: 'edit' } | undefined;
 };

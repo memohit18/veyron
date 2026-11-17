@@ -142,7 +142,7 @@ export function LoginScreen() {
             <View style={styles.hero}>
               <View style={styles.brandBlock}>
                 <Image source={require('../../../assets/icon.png')} style={styles.logo} />
-                <Text style={[styles.wordmark, { color: colors.text }]}>DIP</Text>
+                <Text style={[styles.wordmark, { color: colors.text }]}>Veyron</Text>
                 <Text style={[styles.tagline, { color: colors.textSecondary }]}>
                   Discipline in Progress
                 </Text>

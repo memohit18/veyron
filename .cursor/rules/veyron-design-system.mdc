@@ -1,0 +1,17 @@
+---
+description: Veyron design system for every fitness UI component
+globs: src/**/*.tsx
+alwaysApply: false
+---
+
+# Veyron design system
+
+New and edited UI uses `src/constants/designSystem.ts`. Do not invent colors, radii, type sizes, or spacing.
+
+- The platform name is Veyron. Do not label the product OmniFlow.
+- Color comes from `useFitnessPalette()` or `useTheme().colors`. Those palettes are the Veyron tokens. Brand accent is `palette.lime` (cobalt), text on it is `palette.onLime`.
+- Radius: `radius.xs` 6, `sm` 8, `md` 12, `lg` 16 cards, `xl` 20 heroes, `full` pills and the FAB.
+- Space: 16px gutter, 12–16px stack gap, 64px header, 76px dock, 56px FAB, 96px scroll clearance above the dock.
+- Type: `typeScale.hero | section | subhead | body | caption` from Plus Jakarta Sans. Metrics use `typeScale.hero`.
+- Cards: white surface, 1px `palette.border`, `radius.lg`, 16px padding, `elevation.card`.
+- Do not add Tailwind, CSS variables, or one-off hex values in components.

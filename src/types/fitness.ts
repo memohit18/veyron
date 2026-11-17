@@ -211,10 +211,17 @@ export type WorkoutExercise = {
 
 export type WorkoutDay = {
   id: string;
+  dayNumber?: number | null;
   label?: string | null;
   focus?: string | null;
   estimatedMinutes?: number | null;
   exercises: WorkoutExercise[];
+};
+
+export type WorkoutPlan = {
+  id: string;
+  status?: string | null;
+  days: WorkoutDay[];
 };
 
 export type WorkoutSessionStatus = 'idle' | 'active' | 'paused' | 'finished';

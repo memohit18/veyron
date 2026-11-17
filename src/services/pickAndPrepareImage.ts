@@ -24,9 +24,9 @@ function getNativeModules() {
   }
 }
 
-export async function pickAndPrepareImage(): Promise<PreparedImage | null> {
-  const { ImagePicker, ImageManipulator } = getNativeModules();
-
+async function requestLibraryAccess(
+  ImagePicker: typeof import('expo-image-picker'),
+) {
   if (!ImagePicker.getMediaLibraryPermissionsAsync) {
     throw new Error(
       'Photo upload needs a rebuilt app. Run: npm run ios (rebuilds native modules).',
@@ -47,6 +47,43 @@ export async function pickAndPrepareImage(): Promise<PreparedImage | null> {
     }
     throw error;
   }
+}
+
+function isGifAsset(mimeType?: string | null, fileName?: string | null) {
+  const mime = (mimeType ?? '').toLowerCase();
+  const name = (fileName ?? '').toLowerCase();
+  return mime.includes('gif') || name.endsWith('.gif');
+}
+
+/** Photo or GIF, without flattening an animation into a still JPEG. */
+export async function pickDemoMedia(): Promise<PreparedImage | null> {
+  const { ImagePicker, ImageManipulator } = getNativeModules();
+  await requestLibraryAccess(ImagePicker);
+
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ['images'],
+    allowsEditing: false,
+    quality: 1,
+  });
+
+  if (result.canceled || !result.assets?.[0]) return null;
+  const asset = result.assets[0];
+  if (!asset.uri) return null;
+
+  if (isGifAsset(asset.mimeType, asset.fileName)) {
+    return {
+      uri: asset.uri,
+      fileName: asset.fileName || 'demo.gif',
+      mimeType: 'image/gif',
+    };
+  }
+
+  return compressStill(ImageManipulator, asset);
+}
+
+export async function pickAndPrepareImage(): Promise<PreparedImage | null> {
+  const { ImagePicker, ImageManipulator } = getNativeModules();
+  await requestLibraryAccess(ImagePicker);
 
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
@@ -59,6 +96,13 @@ export async function pickAndPrepareImage(): Promise<PreparedImage | null> {
   }
 
   const asset = result.assets[0];
+  return compressStill(ImageManipulator, asset);
+}
+
+async function compressStill(
+  ImageManipulator: typeof import('expo-image-manipulator'),
+  asset: { uri: string; width?: number; height?: number; fileName?: string | null; mimeType?: string | null },
+): Promise<PreparedImage | null> {
   const width = asset.width || IMAGE_UPLOAD_MAX_DIMENSION;
   const height = asset.height || IMAGE_UPLOAD_MAX_DIMENSION;
   const longest = Math.max(width, height);

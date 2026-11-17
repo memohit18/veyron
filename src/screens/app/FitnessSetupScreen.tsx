@@ -21,6 +21,7 @@ import Toast from 'react-native-toast-message';
 import { getFitnessGoals, getFitnessProfile, saveFitnessProfile } from '../../api/fitnessApi';
 import { generateMealPlan } from '../../api/mealApi';
 import { generateWorkoutPlan } from '../../api/workoutApi';
+import { confirmFitnessAction } from '../../lib/fitness/confirmAction';
 import type { FitnessPalette } from '../../constants/fitnessPalette';
 import { useFitnessPalette, useFitnessStyles } from '../../hooks/useFitnessPalette';
 import {
@@ -142,6 +143,13 @@ export function FitnessSetupScreen() {
     }
 
     if (step === 'review') {
+      const ok = await confirmFitnessAction(
+        'Save fitness profile?',
+        isEditMode
+          ? 'Save this profile and refresh your meal and workout plans?'
+          : 'Save this profile and create your plan?',
+      );
+      if (!ok) return;
       setSubmitting(true);
       try {
         await saveFitnessProfile(toFitnessProfilePayload(values), existingId);

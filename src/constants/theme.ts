@@ -1,3 +1,5 @@
+import { omniColor } from './designSystem';
+
 export type ThemeMode = 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
 
@@ -21,44 +23,47 @@ export interface ThemeColors {
   checkboxBorder: string;
 }
 
+const light = omniColor.light;
+const dark = omniColor.dark;
+
 export const lightColors: ThemeColors = {
-  background: '#F3F4F6',
-  surface: '#FFFFFF',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  primary: '#B8E600',
-  primaryEnd: '#C8FF00',
-  primaryText: '#0E0E0E',
-  border: '#E5E7EB',
-  inputBackground: '#F9FAFB',
-  inputBorder: '#D1D5DB',
-  error: '#DC2626',
-  placeholder: '#9CA3AF',
-  accent: '#A3CC00',
-  glow: 'rgba(200, 255, 0, 0.14)',
-  pattern: 'rgba(200, 255, 0, 0.18)',
-  socialButtonBg: '#FFFFFF',
-  checkboxBorder: '#D1D5DB',
+  background: light.bg,
+  surface: light.card,
+  text: light.text,
+  textSecondary: light.secondary,
+  primary: light.primary,
+  primaryEnd: light.primaryDark,
+  primaryText: light.onPrimary,
+  border: light.border,
+  inputBackground: light.muted,
+  inputBorder: light.border,
+  error: light.danger,
+  placeholder: light.caption,
+  accent: light.primaryLight,
+  glow: light.glaze,
+  pattern: light.glaze,
+  socialButtonBg: light.card,
+  checkboxBorder: light.border,
 };
 
 export const darkColors: ThemeColors = {
-  background: '#0E0E0E',
-  surface: '#171717',
-  text: '#FFFFFF',
-  textSecondary: '#8B8B8B',
-  primary: '#C8FF00',
-  primaryEnd: '#D4FF33',
-  primaryText: '#0E0E0E',
-  border: '#2A2A2A',
-  inputBackground: '#1A1A1A',
-  inputBorder: '#2A2A2A',
-  error: '#F87171',
-  placeholder: '#6B7280',
-  accent: '#C8FF00',
-  glow: 'rgba(200, 255, 0, 0.18)',
-  pattern: 'rgba(200, 255, 0, 0.22)',
+  background: dark.bg,
+  surface: dark.card,
+  text: dark.text,
+  textSecondary: dark.secondary,
+  primary: dark.primary,
+  primaryEnd: dark.primaryDark,
+  primaryText: dark.onPrimary,
+  border: dark.border,
+  inputBackground: dark.muted,
+  inputBorder: dark.border,
+  error: dark.danger,
+  placeholder: dark.caption,
+  accent: dark.primaryLight,
+  glow: dark.glaze,
+  pattern: dark.glaze,
   socialButtonBg: 'transparent',
-  checkboxBorder: '#374151',
+  checkboxBorder: dark.border,
 };
 
 export const THEME_STORAGE_KEY = 'theme-mode';

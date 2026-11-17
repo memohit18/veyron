@@ -6,18 +6,19 @@ import Toast from 'react-native-toast-message';
 import { MediaThumb } from './MediaThumb';
 import type { FitnessPalette } from '../../constants/fitnessPalette';
 import { useFitnessPalette, useFitnessStyles } from '../../hooks/useFitnessPalette';
-import { pickAndPrepareImage } from '../../services/pickAndPrepareImage';
+import { pickAndPrepareImage, type PreparedImage } from '../../services/pickAndPrepareImage';
 import { getApiErrorMessage } from '../../utils/api';
 
 type ImageUploadThumbProps = {
   uri?: string | null;
   fallbackIcon?: keyof typeof Ionicons.glyphMap;
   size?: number;
-  onUpload: (prepared: {
+  onUpload?: (prepared: {
     uri: string;
     fileName: string;
     mimeType: string;
   }) => Promise<string | null | void>;
+  prepare?: () => Promise<PreparedImage | null>;
 };
 
 export function ImageUploadThumb({
@@ -25,6 +26,7 @@ export function ImageUploadThumb({
   fallbackIcon = 'image-outline',
   size = 78,
   onUpload,
+  prepare = pickAndPrepareImage,
 }: ImageUploadThumbProps) {
   const p = useFitnessPalette();
   const styles = useFitnessStyles(buildStyles);
@@ -32,12 +34,13 @@ export function ImageUploadThumb({
   const [localUri, setLocalUri] = useState<string | null>(null);
 
   const onPress = async () => {
-    if (busy) return;
+    if (busy || !onUpload) return;
     setBusy(true);
     try {
-      const prepared = await pickAndPrepareImage();
+      const prepared = await prepare();
       if (!prepared) return;
       const nextUrl = await onUpload(prepared);
+      if (nextUrl === null) return;
       if (typeof nextUrl === 'string' && nextUrl.trim()) {
         setLocalUri(nextUrl);
       } else {
@@ -62,9 +65,9 @@ export function ImageUploadThumb({
 
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Upload image"
-      disabled={busy}
+      accessibilityRole={onUpload ? 'button' : undefined}
+      accessibilityLabel={onUpload ? 'Upload image' : 'Exercise image'}
+      disabled={busy || !onUpload}
       onPress={() => void onPress()}
       style={({ pressed }) => [
         styles.wrap,
@@ -78,13 +81,15 @@ export function ImageUploadThumb({
         size={size}
         uri={localUri ?? uri}
       />
-      <View style={styles.badge}>
-        {busy ? (
-          <ActivityIndicator color={p.onLime} size="small" />
-        ) : (
-          <Ionicons color={p.onLime} name="camera" size={14} />
-        )}
-      </View>
+      {onUpload ? (
+        <View style={styles.badge}>
+          {busy ? (
+            <ActivityIndicator color={p.onLime} size="small" />
+          ) : (
+            <Ionicons color={p.onLime} name="camera" size={14} />
+          )}
+        </View>
+      ) : null}
     </Pressable>
   );
 }

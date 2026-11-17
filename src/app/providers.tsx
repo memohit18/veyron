@@ -1,4 +1,12 @@
+import {
+  PlusJakartaSans_400Regular,
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+  PlusJakartaSans_800ExtraBold,
+} from '@expo-google-fonts/plus-jakarta-sans';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { useFonts } from 'expo-font';
 import { useEffect, type ReactNode } from 'react';
 import Toast from 'react-native-toast-message';
 import { Provider as ReduxProvider } from 'react-redux';
@@ -49,6 +57,14 @@ function NavigationRoot() {
 }
 
 export function AppProviders({ children }: { children?: ReactNode }) {
+  const [fontsLoaded] = useFonts({
+    PlusJakartaSans_400Regular,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+    PlusJakartaSans_800ExtraBold,
+  });
+
   useEffect(() => {
     configureGoogleSignIn();
 
@@ -68,6 +84,8 @@ export function AppProviders({ children }: { children?: ReactNode }) {
       }
     }
   }, []);
+
+  if (!fontsLoaded) return null;
 
   return (
     <ReduxProvider store={store}>

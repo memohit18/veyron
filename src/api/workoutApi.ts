@@ -6,13 +6,14 @@ import {
   isMissingFitnessProfileStatus,
 } from '../lib/fitness/fitnessResponse';
 import {
+  unwrapActiveWorkoutPlan,
   unwrapActiveWorkoutToday,
   unwrapExerciseCatalog,
   unwrapTodayWorkout,
   unwrapWorkoutSession,
   type ExerciseCatalogMedia,
 } from '../lib/fitness/workoutResponse';
-import type { WorkoutDay, WorkoutSession } from '../types/fitness';
+import type { WorkoutDay, WorkoutPlan, WorkoutSession } from '../types/fitness';
 import { getApiErrorMessage } from '../utils/api';
 
 function isAbsent(error: unknown) {
@@ -46,6 +47,34 @@ export async function getTodayWorkout(): Promise<WorkoutDay | null> {
   } catch (error) {
     if (isAbsent(error)) return null;
     throw new Error(getApiErrorMessage(error, 'Unable to load workout.'));
+  }
+}
+
+export async function getActiveWorkoutPlan(): Promise<WorkoutPlan | null> {
+  try {
+    const { data } = await baseApi.get<unknown>('/workouts/active');
+    if (isFitnessErrorEnvelope(data)) return null;
+    return unwrapActiveWorkoutPlan(data);
+  } catch (error) {
+    if (isAbsent(error)) return null;
+    throw new Error(getApiErrorMessage(error, 'Unable to load workouts.'));
+  }
+}
+
+export async function updateWorkoutPlanExercise(
+  itemId: string,
+  input: { sets: number; reps: string; restSeconds: number },
+): Promise<void> {
+  try {
+    const { data } = await baseApi.patch<unknown>(`/workouts/items/${itemId}`, input);
+    if (isFitnessErrorEnvelope(data)) {
+      throw new Error(data.message || 'Unable to update workout.');
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message && !axios.isAxiosError(error)) {
+      throw error;
+    }
+    throw new Error(getApiErrorMessage(error, 'Unable to update workout.'));
   }
 }
 

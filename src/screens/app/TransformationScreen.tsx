@@ -18,6 +18,7 @@ import {
   getTransformationHistory,
 } from '../../api/transformationApi';
 import { AppShell } from '../../components/app/AppShell';
+import { confirmFitnessAction } from '../../lib/fitness/confirmAction';
 import { SideDrawer } from '../../components/app/SideDrawer';
 import type { FitnessPalette } from '../../constants/fitnessPalette';
 import { useFitnessPalette, useFitnessStyles } from '../../hooks/useFitnessPalette';
@@ -108,6 +109,11 @@ export function TransformationScreen() {
   );
 
   const onGenerate = async () => {
+    const ok = await confirmFitnessAction(
+      'Generate transformation?',
+      'Create a transformation plan from your fitness profile?',
+    );
+    if (!ok) return;
     setGenerating(true);
     try {
       const next = await generateTransformation();

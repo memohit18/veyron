@@ -15,6 +15,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 
 import { uploadImage } from '../../api/imagesApi';
+import { confirmFitnessAction } from '../../lib/fitness/confirmAction';
 import {
   completeWorkoutExercise,
   endWorkoutSession,
@@ -30,9 +31,12 @@ import {
   updateExerciseImage,
 } from '../../api/workoutApi';
 import { AppShell } from '../../components/app/AppShell';
+import { AllWorkoutsPanel } from '../../components/fitness/AllWorkoutsPanel';
 import { ImageUploadThumb } from '../../components/fitness/ImageUploadThumb';
 import type { FitnessPalette } from '../../constants/fitnessPalette';
 import { useFitnessPalette, useFitnessStyles } from '../../hooks/useFitnessPalette';
+import { useIsWorkoutAdmin } from '../../hooks/useIsWorkoutAdmin';
+import { pickDemoMedia } from '../../services/pickAndPrepareImage';
 import { resolveFitnessMediaUrl } from '../../lib/fitness/mediaUrl';
 import {
   applyCatalogMedia,
@@ -122,8 +126,10 @@ function applySessionTiming(session: WorkoutSession | null | undefined) {
 }
 
 export function WorkoutScreen() {
+  const canReplaceDemo = useIsWorkoutAdmin();
   const p = useFitnessPalette();
   const styles = useFitnessStyles(buildStyles);
+  const [tab, setTab] = useState<'today' | 'all'>('today');
   const [today, setToday] = useState<WorkoutDay | null>(null);
   const [catalog, setCatalog] = useState<ExerciseCatalogMedia[]>([]);
   const [sessionExercises, setSessionExercises] = useState<WorkoutExercise[]>(
@@ -312,6 +318,11 @@ export function WorkoutScreen() {
   }, [hydrateSession]);
 
   const onGenerate = async () => {
+    const ok = await confirmFitnessAction(
+      'Generate workout?',
+      'Create a workout plan from your fitness profile?',
+    );
+    if (!ok) return;
     setGenerating(true);
     try {
       await generateWorkoutPlan();
@@ -336,6 +347,11 @@ export function WorkoutScreen() {
 
   const onStart = async () => {
     if (!today) return;
+    const ok = await confirmFitnessAction(
+      'Start workout?',
+      'Start today’s workout session?',
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       const dayId = isWorkoutDayId(today.id) ? today.id : undefined;
@@ -379,6 +395,11 @@ export function WorkoutScreen() {
 
   const onPause = async () => {
     if (!sessionId) return;
+    const ok = await confirmFitnessAction(
+      'Pause workout?',
+      'Pause this session?',
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       const session = await pauseWorkoutSession(sessionId);
@@ -402,6 +423,11 @@ export function WorkoutScreen() {
 
   const onResume = async () => {
     if (!sessionId) return;
+    const ok = await confirmFitnessAction(
+      'Resume workout?',
+      'Continue this session?',
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       const session = await resumeWorkoutSession(sessionId);
@@ -432,6 +458,12 @@ export function WorkoutScreen() {
 
   const onFinish = async () => {
     if (!sessionId) return;
+    const ok = await confirmFitnessAction(
+      'Finish workout?',
+      'End this session and save it?',
+      { confirmLabel: 'Finish' },
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       await endWorkoutSession(sessionId, {
@@ -486,6 +518,11 @@ export function WorkoutScreen() {
       });
       return;
     }
+    const ok = await confirmFitnessAction(
+      'Log this set?',
+      `Save ${values.reps} reps at ${values.weight} kg for ${exercise.name}?`,
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       await logWorkoutSet({
@@ -526,6 +563,13 @@ export function WorkoutScreen() {
     exercise: WorkoutExercise,
     skipped = false,
   ) => {
+    const ok = await confirmFitnessAction(
+      skipped ? 'Skip exercise?' : 'Complete exercise?',
+      skipped
+        ? `Skip ${exercise.name}?`
+        : `Mark ${exercise.name} as done?`,
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       await completeWorkoutExercise({
@@ -576,6 +620,11 @@ export function WorkoutScreen() {
       });
       return;
     }
+    const ok = await confirmFitnessAction(
+      'Replace exercise?',
+      `Log ${name} instead of ${exercise.name}?`,
+    );
+    if (!ok) return;
     setBusy(true);
     try {
       await replaceWorkoutExercise({
@@ -607,6 +656,11 @@ export function WorkoutScreen() {
     exercise: WorkoutExercise,
     prepared: { uri: string; fileName: string; mimeType: string },
   ) => {
+    const ok = await confirmFitnessAction(
+      'Save exercise photo?',
+      `Upload this photo for ${exercise.name}?`,
+    );
+    if (!ok) return null;
     const { url } = await uploadImage({
       uri: prepared.uri,
       fileName: prepared.fileName,
@@ -632,7 +686,26 @@ export function WorkoutScreen() {
 
   return (
     <AppShell backgroundColor={p.bg} contentStyle={styles.shell} hideHeader>
+      <View style={styles.tabsWrap}>
+        {(['today', 'all'] as const).map((key) => {
+          const active = tab === key;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setTab(key)}
+              style={[styles.tabChip, active && styles.tabChipActive]}
+            >
+              <Text style={[styles.tabChipText, active && styles.tabChipTextActive]}>
+                {key === 'today' ? 'Today' : 'All workouts'}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {tab === 'all' ? <AllWorkoutsPanel todayDayId={today?.id} /> : null}
+      {tab === 'today' ? (
       <ScrollView
+        style={styles.fill}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
@@ -802,8 +875,10 @@ export function WorkoutScreen() {
                       current === activeExercise.id ? null : activeExercise.id,
                     )
                   }
-                  onUpload={(prepared) =>
-                    onUploadExerciseImage(activeExercise, prepared)
+                  onUpload={
+                    canReplaceDemo
+                      ? (prepared) => onUploadExerciseImage(activeExercise, prepared)
+                      : undefined
                   }
                 />
               </>
@@ -834,8 +909,10 @@ export function WorkoutScreen() {
                       current === exercise.id ? null : exercise.id,
                     )
                   }
-                  onUpload={(prepared) =>
-                    onUploadExerciseImage(exercise, prepared)
+                  onUpload={
+                    canReplaceDemo
+                      ? (prepared) => onUploadExerciseImage(exercise, prepared)
+                      : undefined
                   }
                 />
               );
@@ -860,8 +937,10 @@ export function WorkoutScreen() {
                   showSwap={false}
                   onReplace={() => undefined}
                   onToggleSwap={() => undefined}
-                  onUpload={(prepared) =>
-                    onUploadExerciseImage(exercise, prepared)
+                  onUpload={
+                    canReplaceDemo
+                      ? (prepared) => onUploadExerciseImage(exercise, prepared)
+                      : undefined
                   }
                 />
               );
@@ -869,31 +948,54 @@ export function WorkoutScreen() {
           </>
         ) : null}
       </ScrollView>
+      ) : null}
     </AppShell>
   );
 }
 
 function MovementReference({ uri }: { uri?: string | null }) {
+  const p = useFitnessPalette();
   const styles = useFitnessStyles(buildStyles);
   const resolved = resolveFitnessMediaUrl(uri);
+  const [open, setOpen] = useState(false);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     setFailed(false);
+    setOpen(false);
   }, [resolved]);
 
   if (!resolved || failed) return null;
 
   return (
-    <View style={styles.reference}>
-      <Image
-        accessibilityIgnoresInvertColors
-        accessibilityLabel="Movement reference"
-        resizeMode="cover"
-        source={{ uri: resolved }}
-        style={styles.referenceImage}
-        onError={() => setFailed(true)}
-      />
+    <View style={styles.demoBlock}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={open ? 'Hide demo' : 'How to do it'}
+        onPress={() => setOpen((value) => !value)}
+        style={styles.demoToggle}
+      >
+        <Ionicons
+          color={p.lime}
+          name={open ? 'chevron-up' : 'play-circle-outline'}
+          size={16}
+        />
+        <Text style={styles.demoToggleText}>
+          {open ? 'Hide demo' : 'How to do it'}
+        </Text>
+      </Pressable>
+      {open ? (
+        <View style={styles.reference}>
+          <Image
+            accessibilityIgnoresInvertColors
+            accessibilityLabel="Movement reference"
+            resizeMode="contain"
+            source={{ uri: resolved }}
+            style={styles.referenceImage}
+            onError={() => setFailed(true)}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1130,11 +1232,11 @@ function ActiveExerciseCard({
   onSkip: () => void;
   onReplace: (name: string) => void;
   onToggleSwap: () => void;
-  onUpload: (prepared: {
+  onUpload?: (prepared: {
     uri: string;
     fileName: string;
     mimeType: string;
-  }) => Promise<string>;
+  }) => Promise<string | null>;
 }) {
   const p = useFitnessPalette();
   const styles = useFitnessStyles(buildStyles);
@@ -1157,6 +1259,7 @@ function ActiveExerciseCard({
       <View style={styles.exerciseRow}>
         <ImageUploadThumb
           fallbackIcon="barbell-outline"
+          prepare={pickDemoMedia}
           size={56}
           uri={exercise.imageUrl}
           onUpload={onUpload}
@@ -1312,11 +1415,11 @@ function UpcomingExerciseCard({
   showSwap: boolean;
   onReplace: (name: string) => void;
   onToggleSwap: () => void;
-  onUpload: (prepared: {
+  onUpload?: (prepared: {
     uri: string;
     fileName: string;
     mimeType: string;
-  }) => Promise<string>;
+  }) => Promise<string | null>;
 }) {
   const p = useFitnessPalette();
   const styles = useFitnessStyles(buildStyles);
@@ -1329,6 +1432,7 @@ function UpcomingExerciseCard({
       <View style={styles.exerciseRow}>
         <ImageUploadThumb
           fallbackIcon="barbell-outline"
+          prepare={pickDemoMedia}
           size={48}
           uri={exercise.imageUrl}
           onUpload={onUpload}
@@ -1422,7 +1526,39 @@ function UpcomingExerciseCard({
 
 function buildStyles(p: FitnessPalette) {
   return StyleSheet.create({
-    shell: { backgroundColor: p.bg, paddingHorizontal: 0 },
+    shell: { backgroundColor: p.bg, flex: 1, paddingHorizontal: 0 },
+    fill: { flex: 1 },
+    tabsWrap: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 6,
+      paddingBottom: 10,
+      paddingHorizontal: 16,
+      paddingTop: 6,
+    },
+    tabChip: {
+      alignItems: 'center',
+      backgroundColor: p.surface,
+      borderColor: p.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      flex: 1,
+      justifyContent: 'center',
+      minHeight: 38,
+      paddingHorizontal: 4,
+    },
+    tabChipActive: {
+      backgroundColor: p.lime,
+      borderColor: p.lime,
+    },
+    tabChipText: {
+      color: p.textSecondary,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    tabChipTextActive: {
+      color: p.onLime,
+    },
     content: { gap: 14, padding: 18, paddingBottom: 40 },
     topMeta: { alignItems: 'center' },
     activePill: {
@@ -1494,6 +1630,14 @@ function buildStyles(p: FitnessPalette) {
       gap: 12,
       padding: 16,
     },
+    demoBlock: { gap: 10 },
+    demoToggle: {
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      flexDirection: 'row',
+      gap: 6,
+    },
+    demoToggleText: { color: p.lime, fontSize: 13, fontWeight: '800' },
     reference: {
       backgroundColor: '#F4E7D4',
       borderRadius: 16,

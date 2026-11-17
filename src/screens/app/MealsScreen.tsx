@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { confirmFitnessAction } from '../../lib/fitness/confirmAction';
 import Svg, { Circle } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
 
@@ -125,6 +126,11 @@ export function MealsScreen() {
   );
 
   const onGenerate = async () => {
+    const ok = await confirmFitnessAction(
+      'Generate meal plan?',
+      'This creates today’s meals from your fitness profile.',
+    );
+    if (!ok) return;
     setGenerating(true);
     try {
       await generateMealPlan();
@@ -148,6 +154,16 @@ export function MealsScreen() {
   };
 
   const runMealAction = async (meal: MealItem, action: 'complete' | 'skip' | 'undo') => {
+    const prompt =
+      action === 'complete'
+        ? { title: 'Mark as eaten?', message: `Log ${meal.name} as eaten?` }
+        : action === 'skip'
+          ? { title: 'Skip this meal?', message: `Skip ${meal.name}?` }
+          : { title: 'Undo this meal?', message: `Undo the log for ${meal.name}?` };
+    const ok = await confirmFitnessAction(prompt.title, prompt.message, {
+      destructive: action === 'skip',
+    });
+    if (!ok) return;
     setBusyId(meal.id);
     try {
       if (action === 'complete') await logMealEaten(meal.id, 1);
@@ -170,6 +186,11 @@ export function MealsScreen() {
     meal: MealItem,
     prepared: { uri: string; fileName: string; mimeType: string },
   ) => {
+    const ok = await confirmFitnessAction(
+      'Save meal photo?',
+      `Upload this photo for ${meal.name}?`,
+    );
+    if (!ok) return null;
     const { url } = await uploadImage({
       uri: prepared.uri,
       fileName: prepared.fileName,
@@ -546,13 +567,13 @@ function MealCard({
   onSkip: () => void;
   onUndo: () => void;
   onSwap: () => void;
-  onUpload: (prepared: { uri: string; fileName: string; mimeType: string }) => Promise<string>;
+  onUpload: (prepared: { uri: string; fileName: string; mimeType: string }) => Promise<string | null>;
 }) {
   const styles = useFitnessStyles(buildStyles);
   const eaten = isMealEaten(meal.status);
   const swapped = meal.status === 'replaced' || Boolean(meal.replacementFoodName);
-  const ateName = meal.replacementFoodName || meal.name;
   const amountLabel = mealAmountDisplay(meal);
+  const ateName = meal.replacementFoodName || meal.name;
 
   return (
     <View style={styles.card}>

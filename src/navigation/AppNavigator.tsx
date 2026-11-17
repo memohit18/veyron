@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BottomTabBar, type MainTabRoute } from '../components/app/BottomTabBar';
 import { FitnessOnboardingGate } from '../components/fitness/FitnessOnboardingGate';
 import { AnalyticsScreen } from '../screens/app/AnalyticsScreen';
+import { HomeScreen } from '../screens/app/HomeScreen';
 import { FitnessSetupScreen } from '../screens/app/FitnessSetupScreen';
 import { MealsScreen } from '../screens/app/MealsScreen';
 import { ProfileScreen } from '../screens/app/ProfileScreen';
@@ -38,6 +39,7 @@ function MainTabs() {
           const activeRoute = TAB_ROUTES.includes(routeName as MainTabRoute)
             ? (routeName as MainTabRoute)
             : 'Analytics';
+          const parent = navigation.getParent();
 
           return (
             <BottomTabBar
@@ -45,6 +47,13 @@ function MainTabs() {
               onNavigate={(next) => {
                 if (next === activeRoute) return;
                 navigation.navigate(next);
+              }}
+              onReturn={() => {
+                if (parent?.canGoBack()) {
+                  parent.goBack();
+                  return;
+                }
+                parent?.navigate('Home');
               }}
             />
           );
@@ -63,12 +72,13 @@ function MainTabs() {
 export function AppNavigator() {
   return (
     <Stack.Navigator
-      initialRouteName="MainTabs"
+      initialRouteName="Home"
       screenOptions={{
         headerShown: false,
         animation: 'fade',
       }}
     >
+      <Stack.Screen component={HomeScreen} name="Home" />
       <Stack.Screen component={MainTabs} name="MainTabs" />
       <Stack.Screen
         component={FitnessSetupScreen}

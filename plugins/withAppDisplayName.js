@@ -1,8 +1,8 @@
 const { withInfoPlist, withStringsXml, withXcodeProject } = require('expo/config-plugins');
 
-const DISPLAY_NAME = 'DIP';
+const DISPLAY_NAME = 'Veyron';
 
-/** Home-screen name stays DIP. The native project and bundle id stay fitnessai. */
+/** Home-screen name is Veyron. The native project and bundle id stay fitnessai. */
 function withAppDisplayName(config) {
   config = withInfoPlist(config, (plistConfig) => {
     plistConfig.modResults.CFBundleDisplayName = DISPLAY_NAME;

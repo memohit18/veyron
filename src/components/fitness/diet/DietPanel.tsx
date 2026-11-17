@@ -13,6 +13,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import Toast from 'react-native-toast-message';
 
+import { confirmFitnessAction } from '../../../lib/fitness/confirmAction';
+
 import {
   activateDiet,
   addDietHydration,
@@ -134,6 +136,13 @@ export function DietPanel() {
   };
 
   const onGenerate = async (mode: 'create' | 'regen') => {
+    const ok = await confirmFitnessAction(
+      mode === 'regen' ? 'Regenerate diet?' : 'Generate diet?',
+      mode === 'regen'
+        ? 'Replace the current diet with a new one?'
+        : 'Create a diet from your fitness profile?',
+    );
+    if (!ok) return;
     setGenerating(true);
     try {
       const next = mode === 'regen' ? await regenerateDiet() : await generateDiet();
@@ -158,6 +167,11 @@ export function DietPanel() {
   };
 
   const onActivate = async (id: string) => {
+    const ok = await confirmFitnessAction(
+      'Activate this diet?',
+      'Make this diet your active plan?',
+    );
+    if (!ok) return;
     setActivatingId(id);
     try {
       const next = await activateDiet(id);
@@ -178,6 +192,12 @@ export function DietPanel() {
   };
 
   const onDelete = async (id: string) => {
+    const ok = await confirmFitnessAction(
+      'Delete this diet?',
+      'Remove this diet plan?',
+      { confirmLabel: 'Delete', destructive: true },
+    );
+    if (!ok) return;
     setActivatingId(id);
     try {
       await deleteDiet(id);
@@ -198,6 +218,11 @@ export function DietPanel() {
   };
 
   const onAddWater = async (amountMl: number) => {
+    const ok = await confirmFitnessAction(
+      'Log water?',
+      `Add ${amountMl} ml to today’s water?`,
+    );
+    if (!ok) return;
     setLoggingWater(true);
     try {
       const next = await addDietHydration(amountMl);
